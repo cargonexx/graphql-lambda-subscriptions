@@ -26,9 +26,14 @@ export const getFilteredSubs = async ({ server, event }: { server: Omit<ServerCl
   let attributeCounter = 0
   for (const [key, value] of Object.entries(flattenPayload)) {
     const aliasNumber = attributeCounter++
+    const filterExpression = `(#filter.#${aliasNumber} = :${aliasNumber} OR attribute_not_exists(#filter.#${aliasNumber}))`
+    if (filterExpressions.join(' AND ').length + filterExpression.length > 4096) {
+      // dynamodb limit is 4096 bytes
+      break
+    }
     expressionAttributeNames[`#${aliasNumber}`] = key
     expressionAttributeValues[`:${aliasNumber}`] = value
-    filterExpressions.push(`(#filter.#${aliasNumber} = :${aliasNumber} OR attribute_not_exists(#filter.#${aliasNumber}))`)
+    filterExpressions.push(filterExpression)
   }
 
   server.log('getFilteredSubs', { event, expressionAttributeNames, expressionAttributeValues, filterExpressions })
